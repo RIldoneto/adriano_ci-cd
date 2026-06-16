@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - API de Tarefas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover { background-color: #2980b9; }
+        .btn-green { background-color: #2ecc71; }
+        .btn-green:hover { background-color: #27ae60; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #statusCheck {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .log-box {
+            background: #2c3e50;
+            color: #2ecc71;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 Painel de Monitoramento da API</h1>
+
+    <div class="card">
+        <h2>🔍 Testar Conexão (/health)</h2>
+        <button class="btn" onclick="verificarSaude()">Verificar Saúde da API</button>
+        <div id="statusCheck">Clique no botão para testar...</div>
+    </div>
+
+    <div class="card">
+        <h2>➕ Enviar Nova Tarefa para a Fila (POST)</h2>
+        <div class="form-group">
+            <label for="title">Título da Tarefa:</label>
+            <input type="text" id="title" placeholder="Ex: Ajustar Secrets do Docker">
+        </div>
+        <div class="form-group">
+            <label for="description">Descrição:</label>
+            <textarea id="description" rows="3" placeholder="Ex: Configurar chaves no GitHub Actions"></textarea>
+        </div>
+        <button class="btn btn-green" onclick="enviarTarefa()">Enviar para Fila de Processamento</button>
+    </div>
+
+    <div class="card">
+        <h2>📊 Retorno do Servidor (JSON)</h2>
+        <div id="logConsole" class="log-box">Aguardando ações...</div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://127.0.0.1:8000";
+
+    function atualizarConsole(mensagem, dados) {
+        const consoleElem = document.getElementById("logConsole");
+        const timestamp = new Date().toLocaleTimeString();
+        consoleElem.innerHTML = `[${timestamp}] ${mensagem}\n${JSON.stringify(dados, null, 2)}\n\n` + consoleElem.innerHTML;
+    }
+
+    async function verificarSaude() {
+        const statusDiv = document.getElementById("statusCheck");
+        statusDiv.style.color = "#f39c12";
+        statusDiv.innerText = "Conectando...";
+
+        try {
+            const response = await fetch(`${API_URL}/health`);
+            const data = await response.json();
+            
+            if (response.status === 200) {
+                statusDiv.style.color = "#2ecc71";
+                statusDiv.innerText = "🟢 Conectado! API está saudável.";
+                atualizarConsole("GET /health realizado com sucesso:", data);
+            } else {
+                statusDiv.style.color = "#e74c3c";
+                statusDiv.innerText = "🔴 API respondeu com erro.";
+            }
+        } catch (error) {
+            statusDiv.style.color = "#e74c3c";
+            statusDiv.innerText = "❌ Erro: Verifique se a API está rodando no terminal!";
+        }
+    }
+
+    async function enviarTarefa() {
+        const title = document.getElementById("title").value;
+        const description = document.getElementById("description").value;
+
+        if (!title || !description) {
+            alert("Por favor, preencha todos os campos!");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/tasks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, description })
+            });
+            
+            const data = await response.json();
+
+            if (response.status === 201) {
+                atualizarConsole("POST /tasks - Tarefa adicionada à fila!", data);
+                document.getElementById("title").value = "";
+                document.getElementById("description").value = "";
+                alert("Tarefa enviada com sucesso! Veja o JSON gerado abaixo.");
+            } else {
+                atualizarConsole("Erro ao enviar tarefa:", data);
+            }
+        } catch (error) {
+            alert("Erro ao conectar com a API. Certifique-se de que o uvicorn está ativo.");
+        }
+    }
+</script>
+
+</body>
+</html>
+
